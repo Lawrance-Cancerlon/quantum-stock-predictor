@@ -71,11 +71,13 @@ export default function CandleChart({ data, onDataRangeChange, isLoading = false
     }, [data, zoomLevel, visibleStart]);
 
     const chartMetrics = useMemo(() => {
-        const prices = visibleData.flatMap((item) => [item.High, item.Low]);
-        const priceMin = Math.min(...prices);
-        const priceMax = Math.max(...prices);
+        const prices = visibleData
+            .flatMap((item) => [item.High, item.Low])
+            .filter((v): v is number => v != null && isFinite(v));
+        const priceMin = prices.length > 0 ? Math.min(...prices) : 0;
+        const priceMax = prices.length > 0 ? Math.max(...prices) : 1;
         const priceRange = priceMax - priceMin || 1;
-        const volumeMax = Math.max(...visibleData.map((item) => item.Volume), 1);
+        const volumeMax = Math.max(...visibleData.map((item) => item.Volume).filter((v): v is number => v != null && isFinite(v)), 1);
 
         const plotWidth = VIEWBOX_WIDTH - LEFT_PAD - RIGHT_PAD - PRICE_INNER_PAD * 2;
         const pricePlotTop = PRICE_TOP + PRICE_INNER_PAD;
@@ -118,7 +120,10 @@ export default function CandleChart({ data, onDataRangeChange, isLoading = false
     const yTicks = useMemo(() => {
         if (visibleData.length === 0) return [];
 
-        const prices = visibleData.flatMap((item) => [item.High, item.Low]);
+        const prices = visibleData
+            .flatMap((item) => [item.High, item.Low])
+            .filter((v): v is number => v != null && isFinite(v));
+        if (prices.length === 0) return [];
         const min = Math.min(...prices);
         const max = Math.max(...prices);
         const span = max - min || 1;
@@ -155,14 +160,18 @@ export default function CandleChart({ data, onDataRangeChange, isLoading = false
             return '';
         }
         const baseline = PRICE_TOP + PRICE_HEIGHT - PRICE_INNER_PAD;
-        const points = visibleData.map((point, index) => {
+        const validPoints = visibleData
+            .map((point, index) => ({ point, index }))
+            .filter(({ point }) => point.Close != null && isFinite(point.Close));
+        if (validPoints.length === 0) return '';
+        const points = validPoints.map(({ point, index }) => {
             const x = LEFT_PAD + PRICE_INNER_PAD + index * chartMetrics.step + chartMetrics.step / 2;
-            const y = chartMetrics.priceScale(point.Close);
+            const y = chartMetrics.priceScale(point.Close!);
             return `${x},${y}`;
         });
 
-        const firstX = LEFT_PAD + PRICE_INNER_PAD + chartMetrics.step / 2;
-        const lastX = LEFT_PAD + PRICE_INNER_PAD + (visibleData.length - 1) * chartMetrics.step + chartMetrics.step / 2;
+        const firstX = LEFT_PAD + PRICE_INNER_PAD + validPoints[0].index * chartMetrics.step + chartMetrics.step / 2;
+        const lastX = LEFT_PAD + PRICE_INNER_PAD + validPoints[validPoints.length - 1].index * chartMetrics.step + chartMetrics.step / 2;
 
         return [`M ${firstX} ${baseline}`, `L ${points.join(' L ')}`, `L ${lastX} ${baseline}`, 'Z'].join(' ');
     }, [visibleData, chartMetrics]);
@@ -275,6 +284,9 @@ export default function CandleChart({ data, onDataRangeChange, isLoading = false
                     ))}
 
                     {visibleData.map((point, index) => {
+                        if (point.Open == null || point.Close == null || point.High == null || point.Low == null) {
+                            return null;
+                        }
                         const xCenter = LEFT_PAD + PRICE_INNER_PAD + index * chartMetrics.step + chartMetrics.step / 2;
                         const candleWidth = Math.max(4, chartMetrics.step * 0.55);
                         const color = point.Close >= point.Open ? '#10b981' : '#ef4444';
@@ -308,7 +320,7 @@ export default function CandleChart({ data, onDataRangeChange, isLoading = false
                     <text x={LEFT_PAD} y={18} fill="#cbd5e1" fontSize="12" fontWeight={600}>Price</text>
                 </svg>
 
-                {tooltip && (
+                {tooltip && tooltip.point.Open != null && (
                     <div
                         className="pointer-events-none absolute z-20 rounded-lg border border-blue-400/30 bg-slate-950/90 px-3 py-2 text-xs text-white shadow-xl backdrop-blur-md"
                         style={{
@@ -349,6 +361,9 @@ export default function CandleChart({ data, onDataRangeChange, isLoading = false
                     ))}
 
                     {visibleData.map((point, index) => {
+                        if (point.Volume == null || point.Open == null || point.Close == null) {
+                            return null;
+                        }
                         const VOL_TOP = VOL_TOP_DEFAULT;
                         const VOL_BOTTOM = VOL_VIEWBOX_HEIGHT - VOL_LABEL_OFFSET;
                         const VOL_PLOT_HEIGHT = VOL_BOTTOM - VOL_TOP;
