@@ -1,3 +1,18 @@
+# model
 *.keras
 *.pkl
+
+# database
+*.db
+
+# env
 *.env*
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# vscode
+.vscode/
