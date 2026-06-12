@@ -1,10 +1,10 @@
 export interface StockData {
     Date: string;
-    Open: number;
-    High: number;
-    Low: number;
-    Close: number;
-    Volume: number;
+    Open: number | null;
+    High: number | null;
+    Low: number | null;
+    Close: number | null;
+    Volume: number | null;
 }
 
 export interface PredictionData {
